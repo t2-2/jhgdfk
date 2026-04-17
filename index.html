@@ -9,7 +9,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>מלאי מזווה - משפחת רביבו</title>
     
-    <!-- PWA Manifest -->
+    <!-- PWA Manifest - Using only your iconPWA.svg -->
     <link rel="manifest" href="data:application/json,{
         \"name\": \"מלאי מזווה משפחת רביבו\",
         \"short_name\": \"מלאי מזווה\",
@@ -18,19 +18,25 @@
         \"display\": \"standalone\",
         \"background_color\": \"#ffffff\",
         \"theme_color\": \"#2ecc71\",
-        \"icons\": [{
-            \"src\": \"iconPWA.svg\",
-            \"sizes\": \"192x192\",
-            \"type\": \"image/svg+xml\",
-            \"purpose\": \"any\"
-        }, {
-            \"src\": \"iconPWA.svg\",
-            \"sizes\": \"512x512\",
-            \"type\": \"image/svg+xml\",
-            \"purpose\": \"any\"
-        }]
+        \"icons\": [
+            {
+                \"src\": \"iconPWA.svg\",
+                \"sizes\": \"192x192\",
+                \"type\": \"image/svg+xml\",
+                \"purpose\": \"any\"
+            },
+            {
+                \"src\": \"iconPWA.svg\",
+                \"sizes\": \"512x512\",
+                \"type\": \"image/svg+xml\",
+                \"purpose\": \"any\"
+            }
+        ]
     }">
+    
+    <!-- Favicon / Apple Touch Icon - Using only your iconPWA.svg -->
     <link rel="icon" type="image/svg+xml" href="iconPWA.svg">
+    <link rel="apple-touch-icon" href="iconPWA.svg">
     
     <style>
         :root {
@@ -58,8 +64,9 @@
             background-color: var(--bg-color);
             color: var(--text-main);
             line-height: 1.5;
-            padding-bottom: 90px; /* Space for bottom nav */
+            padding-bottom: 90px;
             overflow-x: hidden;
+            direction: rtl;
         }
 
         /* Header */
@@ -139,6 +146,7 @@
             padding: 12px 5px;
             font-size: 15px;
             outline: none;
+            text-align: right;
         }
 
         /* Items List */
@@ -165,6 +173,7 @@
 
         .item-info {
             flex: 1;
+            text-align: right;
         }
 
         .item-name {
@@ -193,6 +202,7 @@
             background: #f8f9fa;
             padding: 5px;
             border-radius: 12px;
+            direction: ltr;
         }
 
         .qty-btn {
@@ -297,6 +307,7 @@
             border-radius: 24px 24px 0 0;
             padding: 25px 20px 40px;
             animation: slideUp 0.3s ease-out;
+            text-align: right;
         }
 
         @keyframes slideUp {
@@ -314,6 +325,7 @@
             background: #f8f9fa;
             font-size: 16px;
             outline: none;
+            text-align: right;
         }
 
         .btn-save {
@@ -383,12 +395,12 @@
     </div>
 
     <nav class="bottom-nav">
-        <a href="#" class="nav-item active" onclick="filterBy('all')">
+        <a href="#" class="nav-item active" id="navAll">
             <span class="nav-icon">🏠</span>
             <span>הכל</span>
         </a>
         <div class="fab-add" id="addItemBtn">＋</div>
-        <a href="#" class="nav-item" onclick="filterBy('low')">
+        <a href="#" class="nav-item" id="navLow">
             <span class="nav-icon">⚠️</span>
             <span>בחסר</span>
         </a>
@@ -433,7 +445,7 @@
                     <input type="number" id="itemMinQuantity" value="2" min="0">
                 </div>
                 <button type="submit" class="btn-save">שמור מוצר</button>
-                <button type="button" onclick="closeModal()" style="width: 100%; background: none; border: none; margin-top: 15px; color: var(--text-muted); font-weight: 600;">ביטול</button>
+                <button type="button" id="closeModalBtn" style="width: 100%; background: none; border: none; margin-top: 15px; color: var(--text-muted); font-weight: 600;">ביטול</button>
             </form>
         </div>
     </div>
@@ -500,7 +512,7 @@
                 const card = document.createElement('div');
                 card.className = `item-card ${isOut ? 'out-of-stock' : isLow ? 'low-stock' : ''}`;
                 card.innerHTML = `
-                    <div class="item-info" onclick="editItem('${id}')">
+                    <div class="item-info" id="edit-${id}">
                         <div class="item-name">${item.name}</div>
                         <div class="item-meta">
                             <span class="category-tag">${item.category}</span>
@@ -508,25 +520,29 @@
                         </div>
                     </div>
                     <div class="quantity-controls">
-                        <button class="qty-btn minus" onclick="changeQty('${id}', -1)">−</button>
+                        <button class="qty-btn minus" id="minus-${id}">−</button>
                         <div style="display: flex; flex-direction: column; align-items: center;">
                             <div class="qty-display">${item.quantity}</div>
                             <div class="unit-text">${item.unit}</div>
                         </div>
-                        <button class="qty-btn plus" onclick="changeQty('${id}', 1)">＋</button>
+                        <button class="qty-btn plus" id="plus-${id}">＋</button>
                     </div>
                 `;
                 container.appendChild(card);
+
+                document.getElementById(`edit-${id}`).onclick = () => editItem(id);
+                document.getElementById(`minus-${id}`).onclick = () => changeQty(id, -1);
+                document.getElementById(`plus-${id}`).onclick = () => changeQty(id, 1);
             });
         }
 
-        window.changeQty = (id, delta) => {
+        function changeQty(id, delta) {
             const newQty = Math.max(0, (items[id].quantity || 0) + delta);
             update(ref(database, `items/${id}`), { quantity: newQty });
             showToast(`${items[id].name}: ${newQty}`);
-        };
+        }
 
-        window.editItem = (id) => {
+        function editItem(id) {
             editingId = id;
             const item = items[id];
             document.getElementById('itemName').value = item.name;
@@ -536,7 +552,7 @@
             document.getElementById('itemMinQuantity').value = item.minQuantity;
             document.getElementById('modalTitle').innerText = 'עריכת מוצר';
             modal.classList.add('active');
-        };
+        }
 
         document.getElementById('addItemBtn').onclick = () => {
             editingId = null;
@@ -545,7 +561,7 @@
             modal.classList.add('active');
         };
 
-        window.closeModal = () => modal.classList.remove('active');
+        document.getElementById('closeModalBtn').onclick = () => modal.classList.remove('active');
 
         form.onsubmit = (e) => {
             e.preventDefault();
@@ -558,16 +574,23 @@
                 minQuantity: parseInt(document.getElementById('itemMinQuantity').value)
             };
             set(ref(database, `items/${id}`), data);
-            closeModal();
+            modal.classList.remove('active');
             showToast('נשמר בהצלחה!');
         };
 
         document.getElementById('searchInput').oninput = render;
 
-        window.filterBy = (type) => {
-            currentFilter = type;
+        document.getElementById('navAll').onclick = (e) => {
+            currentFilter = 'all';
             document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-            event.currentTarget.classList.add('active');
+            e.currentTarget.classList.add('active');
+            render();
+        };
+
+        document.getElementById('navLow').onclick = (e) => {
+            currentFilter = 'low';
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            e.currentTarget.classList.add('active');
             render();
         };
 
@@ -585,13 +608,11 @@
             setTimeout(() => t.style.display = 'none', 2000);
         }
 
-        // Handle long press for delete
         let pressTimer;
         container.addEventListener('touchstart', (e) => {
             const card = e.target.closest('.item-card');
             if (!card) return;
             pressTimer = window.setTimeout(() => {
-                // Find ID by matching name (simplified for demo)
                 const name = card.querySelector('.item-name').innerText;
                 const id = Object.keys(items).find(k => items[k].name === name);
                 if (confirm(`למחוק את ${name}?`)) {
