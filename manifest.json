@@ -2,7 +2,7 @@
   "name": "מלאי מזווה משפחת רביבו",
   "short_name": "מלאי מזווה",
   "description": "מערכת ניהול מלאי מזווה חוץ ביתי",
-  "start_url": "./pantry-inventory.html",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#2ecc71",
