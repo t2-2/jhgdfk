@@ -1,0 +1,23 @@
+{
+  "name": "מלאי מזווה משפחת רביבו",
+  "short_name": "מלאי מזווה",
+  "description": "מערכת ניהול מלאי מזווה חוץ ביתי",
+  "start_url": "./pantry-inventory.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2ecc71",
+  "icons": [
+    {
+      "src": "iconPWA.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "iconPWA.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
