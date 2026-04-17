@@ -351,7 +351,7 @@
                 <h1>מזווה רביבו 📦</h1>
                 <div class="subtitle">ניהול מלאי חכם</div>
             </div>
-            <div id="syncIndicator" style="font-size: 18px; opacity: 0.5;">🟢</div>
+            <div id="syncIndicator" style="font-size: 18px; opacity: 0.5;">🔴</div>
         </div>
     </header>
 
@@ -420,7 +420,7 @@
                 </div>
                 <div class="form-group">
                     <label>התראה בכמות נמוכה מ-</label>
-                    <input type="number" id="itemMinQuantity" value="2" min="0">
+                    <input type="number" id="itemMinQuantity" value="0" min="0">
                 </div>
                 <button type="submit" class="btn-save">שמור מוצר</button>
                 <button type="button" id="closeModalBtn" style="width: 100%; background: none; border: none; margin-top: 15px; color: var(--text-muted); font-weight: 600;">ביטול</button>
@@ -432,7 +432,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-        import { getDatabase, ref, onValue, set, remove, update } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js";
+        import { getDatabase, ref, onValue, set, remove, update, push } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCpGMEYYcC2DyWgxM7q0jOi3a8Pby1knjM",
@@ -454,19 +454,28 @@
         const container = document.getElementById('itemsContainer');
         const modal = document.getElementById('itemModal');
         const form = document.getElementById('itemForm');
+        const syncIndicator = document.getElementById('syncIndicator');
 
-        // Load Data
-        onValue(ref(database, 'items'), (snapshot) => {
+        // Load Data with real-time listener
+        const itemsRef = ref(database, 'items');
+        onValue(itemsRef, (snapshot) => {
+            console.log("Data received from Firebase:", snapshot.val());
             items = snapshot.val() || {};
+            syncIndicator.innerText = '🟢';
+            syncIndicator.style.opacity = '1';
             render();
             updateStats();
+        }, (error) => {
+            console.error("Firebase Read Error:", error);
+            syncIndicator.innerText = '🔴';
+            showToast("שגיאת קריאה: " + error.message);
         });
 
         function render() {
             const search = document.getElementById('searchInput').value.toLowerCase();
             container.innerHTML = '';
             
-            let keys = Object.keys(items).reverse();
+            let keys = Object.keys(items).sort().reverse();
             
             const filteredKeys = keys.filter(id => {
                 const item = items[id];
@@ -509,15 +518,22 @@
                 container.appendChild(card);
 
                 document.getElementById(`edit-${id}`).onclick = () => editItem(id);
-                document.getElementById(`minus-${id}`).onclick = () => changeQty(id, -1);
-                document.getElementById(`plus-${id}`).onclick = () => changeQty(id, 1);
+                document.getElementById(`minus-${id}`).onclick = (e) => {
+                    e.stopPropagation();
+                    changeQty(id, -1);
+                };
+                document.getElementById(`plus-${id}`).onclick = (e) => {
+                    e.stopPropagation();
+                    changeQty(id, 1);
+                };
             });
         }
 
         function changeQty(id, delta) {
             const newQty = Math.max(0, (items[id].quantity || 0) + delta);
-            update(ref(database, `items/${id}`), { quantity: newQty });
-            showToast(`${items[id].name}: ${newQty}`);
+            update(ref(database, `items/${id}`), { quantity: newQty })
+                .then(() => showToast(`${items[id].name}: ${newQty}`))
+                .catch(err => showToast("שגיאת עדכון: " + err.message));
         }
 
         function editItem(id) {
@@ -535,6 +551,8 @@
         document.getElementById('addItemBtn').onclick = () => {
             editingId = null;
             form.reset();
+            document.getElementById('itemQuantity').value = 1;
+            document.getElementById('itemMinQuantity').value = 0; // Default to 0
             document.getElementById('modalTitle').innerText = 'הוספת מוצר';
             modal.classList.add('active');
         };
@@ -543,7 +561,6 @@
 
         form.onsubmit = (e) => {
             e.preventDefault();
-            const id = editingId || Date.now();
             const data = {
                 name: document.getElementById('itemName').value,
                 quantity: parseInt(document.getElementById('itemQuantity').value),
@@ -551,9 +568,17 @@
                 category: document.getElementById('itemCategory').value,
                 minQuantity: parseInt(document.getElementById('itemMinQuantity').value)
             };
-            set(ref(database, `items/${id}`), data);
-            modal.classList.remove('active');
-            showToast('נשמר בהצלחה!');
+
+            const targetRef = editingId ? ref(database, `items/${editingId}`) : push(ref(database, 'items'));
+            
+            set(targetRef, data)
+                .then(() => {
+                    modal.classList.remove('active');
+                    showToast('נשמר בהצלחה!');
+                })
+                .catch(err => {
+                    showToast("שגיאת שמירה: " + err.message);
+                });
         };
 
         document.getElementById('searchInput').oninput = render;
@@ -583,7 +608,7 @@
             const t = document.getElementById('toast');
             t.innerText = msg;
             t.style.display = 'block';
-            setTimeout(() => t.style.display = 'none', 2000);
+            setTimeout(() => t.style.display = 'none', 3000);
         }
 
         let pressTimer;
@@ -594,7 +619,9 @@
                 const name = card.querySelector('.item-name').innerText;
                 const id = Object.keys(items).find(k => items[k].name === name);
                 if (confirm(`למחוק את ${name}?`)) {
-                    remove(ref(database, `items/${id}`));
+                    remove(ref(database, `items/${id}`))
+                        .then(() => showToast("נמחק בהצלחה"))
+                        .catch(err => showToast("שגיאת מחיקה: " + err.message));
                 }
             }, 800);
         });
